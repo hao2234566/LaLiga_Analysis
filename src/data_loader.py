@@ -122,19 +122,24 @@ class DataLoader:
         说明：
         - 保留缺失值处理
         - 保留异常值检测
+        - 新增：强制数值列类型转换，彻底解决字符串类型报错
         - 不对体育统计中的极端值做截断修改，避免破坏真实表现
         """
         print(f"\n>>> 开始清洗 {data_type} 数据...")
-
+        # ========== 核心修复：强制转换数值列，解决字符串类型问题 ==========
+        # 把所有非文本列，强制转为数字类型，无法转换的设为NaN
+        for col in df.columns:
+            # 跳过明确的文本列
+            if any(keyword in str(col) for keyword in ['球队', '球员', '姓名', '位置', '主队', '客队', '赛季']):
+                continue
+            # 强制转为数值类型，错误值设为NaN
+            df[col] = pd.to_numeric(df[col], errors='coerce')
         # 1. 完整性检查
         self._report_missing_data(df, data_type)
-
         # 2. 处理缺失值
         df = self._handle_missing_values(df)
-
         # 3. 检测异常值（只检测，不修改）
         df = self._handle_outliers(df)
-
         print(f">>> {data_type} 数据清洗完成。\n")
         return df
 
@@ -184,26 +189,20 @@ class DataLoader:
         """
         df = df.copy()
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-
         for col in numeric_cols:
-            if df[col].dropna().empty:
+            col_data = df[col].dropna()
+            if col_data.empty:
                 continue
-
-            Q1 = df[col].quantile(0.25)
-            Q3 = df[col].quantile(0.75)
+            Q1 = col_data.quantile(0.25)
+            Q3 = col_data.quantile(0.75)
             IQR = Q3 - Q1
-
             if IQR == 0:
                 continue
-
             lower_bound = Q1 - 3 * IQR
             upper_bound = Q3 + 3 * IQR
-
             outlier_count = len(df[(df[col] < lower_bound) | (df[col] > upper_bound)])
-
             if outlier_count > 0:
                 print(f"  ⚠️ 列 '{col}' 检测到 {outlier_count} 个异常值候选，但未修改原始数据。")
-
         return df
 
     # ================= 预处理方法 =================
