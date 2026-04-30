@@ -374,6 +374,7 @@ def page_player_analysis(player_data):
 
 def page_match_prediction(team_data, predictor):
     st.title("🔮 比赛结果预测")
+    st.caption("版本：debug-1")
 
     teams = team_data["球队"].tolist()
 
@@ -390,8 +391,10 @@ def page_match_prediction(team_data, predictor):
         st.warning("主队和客队不能相同。")
         return
 
-    if st.button("开始预测", type="primary"):
-        result = safe_run(predictor.predict_match, home_team, away_team)
+        if st.button("开始预测"):
+            result = safe_run(predictor.predict_match, home_team, away_team)
+            st.write("DEBUG result:")
+            st.write(result)
 
         if result is None:
             return
